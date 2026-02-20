@@ -22,7 +22,6 @@ def create_app() -> Flask:
         UPLOAD_FOLDER=os.getenv("UPLOAD_FOLDER", str(base_dir / "uploads")),
         PREVIEW_FOLDER=os.getenv("PREVIEW_FOLDER", str(base_dir / "previews")),
         MAX_CONTENT_LENGTH=int(os.getenv("MAX_CONTENT_LENGTH", str(1024 * 1024 * 1024))),
-        REDIS_URL=os.getenv("REDIS_URL", "redis://localhost:6379/0"),
     )
 
     Path(app.config["UPLOAD_FOLDER"]).mkdir(parents=True, exist_ok=True)

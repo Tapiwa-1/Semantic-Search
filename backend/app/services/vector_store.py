@@ -13,21 +13,17 @@ class VectorStore:
         self.collection: Collection = self.client.get_or_create_collection("vault_chunks")
 
     def upsert(self, vector_id: str, vector: list[float], metadata: dict, document: str = "") -> None:
-        self.collection.upsert(
-            ids=[vector_id],
-            embeddings=[vector],
-            metadatas=[metadata],
-            documents=[document],
-        )
+        self.collection.upsert(ids=[vector_id], embeddings=[vector], metadatas=[metadata], documents=[document])
 
     def query(self, query_vector: list[float], limit: int = 20, where: dict | None = None) -> dict:
-        kwargs = {
-            "query_embeddings": [query_vector],
-            "n_results": limit,
-        }
+        kwargs = {"query_embeddings": [query_vector], "n_results": limit}
         if where:
             kwargs["where"] = where
         return self.collection.query(**kwargs)
+
+    def delete_ids(self, vector_ids: list[str]) -> None:
+        if vector_ids:
+            self.collection.delete(ids=vector_ids)
 
 
 def get_vector_store() -> VectorStore:

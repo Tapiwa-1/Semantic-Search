@@ -1,15 +1,22 @@
 <script setup>
 import axios from 'axios'
 import { onMounted, ref } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 
 const route = useRoute()
+const router = useRouter()
 const doc = ref(null)
 
 onMounted(async () => {
   const { data } = await axios.get('/api/documents')
   doc.value = data.find((d) => String(d.id) === route.params.id)
 })
+
+const deleteDoc = async () => {
+  if (!doc.value) return
+  await axios.delete(`/api/documents/${doc.value.id}`)
+  router.push('/upload')
+}
 </script>
 
 <template>
@@ -34,6 +41,9 @@ onMounted(async () => {
       >
         Open original
       </a>
+      <button class="inline-flex rounded-full bg-rose-50 px-4 py-2 text-sm font-semibold text-rose-700 hover:bg-rose-100" @click="deleteDoc">
+        Delete file
+      </button>
     </aside>
   </section>
 </template>

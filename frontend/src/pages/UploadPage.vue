@@ -31,6 +31,11 @@ const handleUpload = async () => {
   }
 }
 
+const deleteDoc = async (id) => {
+  await axios.delete(`/api/documents/${id}`)
+  await fetchDocs()
+}
+
 const poll = async () => {
   for (const doc of docs.value) {
     const jobId = jobs.value[doc.id]
@@ -92,12 +97,17 @@ onMounted(async () => {
     <div class="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
       <h3 class="mb-3 text-base font-semibold text-slate-900">Recent uploads</h3>
       <ul class="space-y-2">
-        <li v-for="doc in docs" :key="doc.id" class="flex items-center justify-between rounded-xl bg-slate-50 px-3 py-2">
+        <li v-for="doc in docs" :key="doc.id" class="flex items-center justify-between gap-2 rounded-xl bg-slate-50 px-3 py-2">
           <div class="min-w-0">
             <p class="truncate text-sm font-medium text-slate-800">{{ doc.name }}</p>
             <p class="text-xs capitalize text-slate-500">{{ doc.doc_type }}</p>
           </div>
-          <span class="rounded-full px-2.5 py-1 text-xs font-medium" :class="statusClass(doc.status)">{{ doc.status }}</span>
+          <div class="flex items-center gap-2">
+            <span class="rounded-full px-2.5 py-1 text-xs font-medium" :class="statusClass(doc.status)">{{ doc.status }}</span>
+            <button class="rounded-full bg-rose-50 px-3 py-1 text-xs font-medium text-rose-700 hover:bg-rose-100" @click="deleteDoc(doc.id)">
+              Delete
+            </button>
+          </div>
         </li>
       </ul>
     </div>

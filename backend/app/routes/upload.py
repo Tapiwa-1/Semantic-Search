@@ -2,14 +2,16 @@ from __future__ import annotations
 
 import hashlib
 import mimetypes
+import shutil
 import uuid
 from pathlib import Path
 
 from flask import Blueprint, current_app, jsonify, request
 from werkzeug.utils import secure_filename
 
-from ..models import Document, JobStatus, db
-from ..tasks import process_document
+from ..models import Chunk, Document, JobStatus, db
+from ..services.vector_store import get_vector_store
+from ..tasks import enqueue_document_processing
 
 upload_bp = Blueprint("upload", __name__, url_prefix="/api")
 
@@ -66,7 +68,7 @@ def upload_file():
     db.session.add(job)
     db.session.commit()
 
-    process_document.delay(doc.id, job_id)
+    enqueue_document_processing(current_app._get_current_object(), doc.id, job_id)
 
     return jsonify({"document_id": doc.id, "job_id": job_id, "status": "queued"}), 202
 
@@ -94,3 +96,32 @@ def list_documents():
             for d in docs
         ]
     )
+
+
+@upload_bp.delete("/documents/<int:document_id>")
+def delete_document(document_id: int):
+    doc = Document.query.get(document_id)
+    if not doc:
+        return jsonify({"error": "document not found"}), 404
+
+    vector_ids = [c.vector_id for c in doc.chunks if c.vector_id]
+    get_vector_store().delete_ids(vector_ids)
+
+    file_path = Path(doc.file_path)
+    if file_path.exists():
+        file_path.unlink()
+
+    if doc.preview_path:
+        preview_path = Path(doc.preview_path)
+        if preview_path.exists():
+            preview_path.unlink()
+
+    frames_dir = Path(current_app.config["PREVIEW_FOLDER"]) / f"frames_{document_id}"
+    if frames_dir.exists() and frames_dir.is_dir():
+        shutil.rmtree(frames_dir, ignore_errors=True)
+
+    JobStatus.query.filter_by(document_id=document_id).delete()
+    db.session.delete(doc)
+    db.session.commit()
+
+    return jsonify({"status": "deleted", "document_id": document_id})

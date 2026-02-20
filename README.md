@@ -1,15 +1,16 @@
 # Semantic Multimedia Document Vault
 
-MVP implementation using **Flask + Celery + Redis + ChromaDB** for backend indexing/search and **Vue 3 + Vite + Tailwind CSS + Flowbite** for frontend.
+MVP implementation using **Flask + SQLAlchemy + ChromaDB** for backend indexing/search and **Vue 3 + Vite + Tailwind CSS + Flowbite** for frontend.
 
 ## Features
 - Upload image / PDF / video files.
-- Async indexing pipeline:
+- Async indexing pipeline (in-process background workers, no Redis required):
   - Image: thumbnail + CLIP embedding
   - PDF: first page preview + page text extraction + embeddings
   - Video: poster frame + sampled frame embeddings
 - Semantic search endpoint with optional type filter.
 - File and preview serving endpoints.
+- Delete endpoint that removes uploaded files, previews, frame artifacts, DB rows, and vector entries.
 - Vue UI (Tailwind + Flowbite styling, Google Photos-inspired):
   - Upload & document statuses
   - Search results with previews and chunk references
@@ -28,13 +29,6 @@ Run API:
 python run.py
 ```
 
-Run worker:
-```bash
-celery -A app.tasks.celery_app worker --loglevel=info
-```
-
-Redis must be running on `localhost:6379`.
-
 ## Frontend setup
 ```bash
 cd frontend
@@ -48,6 +42,7 @@ Frontend dev server runs on `http://localhost:5173` and proxies `/api` + `/files
 - `POST /api/upload` (multipart `file`)
 - `GET /api/jobs/<job_id>`
 - `GET /api/documents`
+- `DELETE /api/documents/<document_id>`
 - `GET /api/search?q=<text>&type=<optional>&limit=20`
 - `GET /files/<document_id>`
 - `GET /files/<document_id>/preview`

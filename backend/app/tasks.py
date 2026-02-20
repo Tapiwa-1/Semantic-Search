@@ -3,10 +3,10 @@ from __future__ import annotations
 import hashlib
 import os
 import uuid
+from concurrent.futures import ThreadPoolExecutor
 from functools import lru_cache
 from pathlib import Path
 
-from celery import Celery
 from flask import current_app
 from PIL import Image
 
@@ -16,12 +16,7 @@ from .services.extract_pdf import extract_pdf_pages
 from .services.extract_video import extract_frames, extract_poster
 from .services.vector_store import get_vector_store
 
-
-celery_app = Celery(
-    __name__,
-    broker=os.getenv("REDIS_URL", "redis://localhost:6379/0"),
-    backend=os.getenv("REDIS_URL", "redis://localhost:6379/0"),
-)
+executor = ThreadPoolExecutor(max_workers=int(os.getenv("INDEXER_WORKERS", "2")))
 
 
 @lru_cache(maxsize=1)
@@ -29,6 +24,10 @@ def get_flask_app():
     from . import create_app
 
     return create_app()
+
+
+def enqueue_document_processing(app, document_id: int, job_id: str) -> None:
+    executor.submit(process_document, document_id, job_id, app)
 
 
 def _sha256(path: str) -> str:
@@ -48,9 +47,8 @@ def _update_job(job_id: str, status: str, progress: int, error: str | None = Non
         db.session.commit()
 
 
-@celery_app.task(bind=True)
-def process_document(self, document_id: int, job_id: str):
-    app = get_flask_app()
+def process_document(document_id: int, job_id: str, app=None):
+    app = app or get_flask_app()
     with app.app_context():
         doc = Document.query.get(document_id)
         if not doc:
