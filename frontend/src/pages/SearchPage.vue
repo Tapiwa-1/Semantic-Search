@@ -1,6 +1,6 @@
 <script setup>
 import axios from 'axios'
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
 
 const q = ref('')
@@ -9,66 +9,82 @@ const results = ref([])
 const loading = ref(false)
 const router = useRouter()
 
+const typeOptions = [
+  { label: 'All', value: '' },
+  { label: 'Images', value: 'image' },
+  { label: 'PDFs', value: 'pdf' },
+  { label: 'Videos', value: 'video' }
+]
+
 const runSearch = async () => {
   loading.value = true
-  const { data } = await axios.get('/api/search', { params: { q: q.value, type: type.value || undefined } })
-  results.value = data.results
-  loading.value = false
+  try {
+    const { data } = await axios.get('/api/search', { params: { q: q.value, type: type.value || undefined } })
+    results.value = data.results
+  } finally {
+    loading.value = false
+  }
 }
+
+const groupedHint = computed(() => {
+  if (!q.value) return 'Search your library by concept, object, text, or moment.'
+  return `Showing ${results.value.length} result${results.value.length === 1 ? '' : 's'} for "${q.value}"`
+})
 </script>
 
 <template>
-  <section class="space-y-6">
-    <div class="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-      <h2 class="mb-4 text-lg font-semibold text-slate-900">Semantic search</h2>
-      <div class="grid gap-3 md:grid-cols-[1fr_180px_auto]">
+  <section class="space-y-5">
+    <div class="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
+      <div class="flex flex-col gap-3 lg:flex-row">
         <input
           v-model="q"
-          placeholder="Try: red car, wedding decor, invoice number 234"
-          class="rounded-lg border border-slate-300 bg-slate-50 p-2.5 text-sm text-slate-900 focus:border-brand-500 focus:ring-brand-500"
+          class="w-full rounded-full border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 placeholder:text-slate-400 focus:border-brand-400 focus:bg-white focus:ring-brand-400"
+          placeholder="Search photos, PDFs, videos... (e.g. red car, invoice number 234)"
+          @keyup.enter="runSearch"
         />
-        <select
-          v-model="type"
-          class="rounded-lg border border-slate-300 bg-slate-50 p-2.5 text-sm text-slate-900 focus:border-brand-500 focus:ring-brand-500"
-        >
-          <option value="">All types</option>
-          <option value="image">Image</option>
-          <option value="pdf">PDF</option>
-          <option value="video">Video</option>
-        </select>
         <button
-          class="rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700 disabled:opacity-60"
+          class="rounded-full bg-brand-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-brand-700 disabled:opacity-60"
           :disabled="!q || loading"
           @click="runSearch"
         >
           {{ loading ? 'Searching...' : 'Search' }}
         </button>
       </div>
+
+      <div class="mt-4 flex flex-wrap gap-2">
+        <button
+          v-for="opt in typeOptions"
+          :key="opt.value"
+          class="rounded-full border px-3 py-1 text-xs font-medium transition"
+          :class="type === opt.value ? 'border-brand-200 bg-brand-50 text-brand-700' : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'"
+          @click="type = opt.value"
+        >
+          {{ opt.label }}
+        </button>
+      </div>
+      <p class="mt-3 text-xs text-slate-500">{{ groupedHint }}</p>
     </div>
 
-    <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+    <div v-if="results.length" class="columns-1 gap-4 sm:columns-2 lg:columns-3 xl:columns-4">
       <article
         v-for="item in results"
         :key="item.document_id"
-        class="cursor-pointer overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm transition hover:shadow-md"
+        class="group mb-4 cursor-pointer break-inside-avoid overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-slate-200 transition hover:shadow-md"
         @click="router.push(`/detail/${item.document_id}`)"
       >
-        <img :src="item.preview_url" alt="preview" class="h-40 w-full object-cover" />
-        <div class="space-y-2 p-4">
-          <h3 class="line-clamp-1 text-base font-semibold text-slate-900">{{ item.name }}</h3>
-          <p class="text-sm text-slate-600">
-            Type: <span class="font-medium capitalize">{{ item.doc_type }}</span> ·
-            Score: <span class="font-medium">{{ item.score }}</span>
+        <img :src="item.preview_url" alt="preview" class="w-full object-cover" />
+        <div class="space-y-1 p-3">
+          <h3 class="line-clamp-1 text-sm font-semibold text-slate-900">{{ item.name }}</h3>
+          <p class="text-xs text-slate-500 capitalize">{{ item.doc_type }} · score {{ item.score }}</p>
+          <p class="line-clamp-2 text-xs text-slate-500" v-if="item.matches?.[0]">
+            Match: {{ item.matches[0].chunk_type }}{{ item.matches[0].ref ? ` @ ${item.matches[0].ref}` : '' }}
           </p>
-          <ul class="space-y-1 text-xs text-slate-500">
-            <li v-for="m in item.matches" :key="`${m.chunk_type}-${m.ref}`">
-              {{ m.chunk_type }}{{ m.ref ? ` @ ${m.ref}` : '' }}
-            </li>
-          </ul>
         </div>
       </article>
     </div>
 
-    <p v-if="!loading && results.length === 0" class="text-sm text-slate-500">No results yet. Run a query above.</p>
+    <div v-else-if="!loading" class="rounded-2xl border border-dashed border-slate-300 bg-white p-10 text-center">
+      <p class="text-sm text-slate-500">No results yet. Try searching a concept like “wedding decor” or “terms and conditions”.</p>
+    </div>
   </section>
 </template>

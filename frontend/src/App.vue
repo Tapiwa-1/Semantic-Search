@@ -1,32 +1,35 @@
 <template>
-  <div class="mx-auto max-w-6xl px-4 py-6 sm:px-6 lg:px-8">
-    <header class="mb-6 rounded-xl border border-slate-200 bg-white shadow-sm">
-      <div class="flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 class="text-2xl font-bold text-slate-900">Semantic Multimedia Vault</h1>
-          <p class="text-sm text-slate-500">Upload and semantically search images, PDFs, and videos.</p>
-        </div>
+  <div class="min-h-screen bg-slate-50">
+    <header class="sticky top-0 z-20 border-b border-slate-200/80 bg-white/95 backdrop-blur">
+      <div class="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-3 sm:px-6 lg:px-8">
+        <RouterLink to="/search" class="flex items-center gap-3">
+          <div class="grid h-8 w-8 place-items-center rounded-full bg-brand-100 text-brand-700">📸</div>
+          <div>
+            <h1 class="text-base font-semibold text-slate-900 sm:text-lg">Vault Photos</h1>
+            <p class="text-xs text-slate-500">Your semantic media library</p>
+          </div>
+        </RouterLink>
 
-        <nav class="inline-flex rounded-lg border border-slate-200 bg-slate-50 p-1">
+        <nav class="inline-flex rounded-full border border-slate-200 bg-slate-50 p-1">
+          <RouterLink
+            to="/search"
+            class="rounded-full px-4 py-1.5 text-sm font-medium text-slate-600 hover:bg-white"
+            active-class="bg-white text-brand-700 shadow-sm"
+          >
+            Photos
+          </RouterLink>
           <RouterLink
             to="/upload"
-            class="rounded-md px-4 py-2 text-sm font-medium text-slate-600 hover:bg-white hover:text-brand-700"
+            class="rounded-full px-4 py-1.5 text-sm font-medium text-slate-600 hover:bg-white"
             active-class="bg-white text-brand-700 shadow-sm"
           >
             Upload
-          </RouterLink>
-          <RouterLink
-            to="/search"
-            class="rounded-md px-4 py-2 text-sm font-medium text-slate-600 hover:bg-white hover:text-brand-700"
-            active-class="bg-white text-brand-700 shadow-sm"
-          >
-            Search
           </RouterLink>
         </nav>
       </div>
     </header>
 
-    <main>
+    <main class="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
       <RouterView />
     </main>
   </div>

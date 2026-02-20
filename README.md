@@ -10,7 +10,7 @@ MVP implementation using **Flask + Celery + Redis + ChromaDB** for backend index
   - Video: poster frame + sampled frame embeddings
 - Semantic search endpoint with optional type filter.
 - File and preview serving endpoints.
-- Vue UI (Tailwind + Flowbite styling):
+- Vue UI (Tailwind + Flowbite styling, Google Photos-inspired):
   - Upload & document statuses
   - Search results with previews and chunk references
   - Detail page for media viewing

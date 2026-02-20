@@ -1,6 +1,6 @@
 <script setup>
 import axios from 'axios'
-import { onMounted, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 
 const file = ref(null)
 const docs = ref([])
@@ -40,12 +40,18 @@ const poll = async () => {
   }
 }
 
-const badgeClass = (status) => {
-  if (status === 'ready') return 'bg-green-100 text-green-800'
-  if (status === 'failed') return 'bg-red-100 text-red-800'
-  if (status === 'processing') return 'bg-yellow-100 text-yellow-800'
+const statusClass = (status) => {
+  if (status === 'ready') return 'bg-emerald-50 text-emerald-700'
+  if (status === 'failed') return 'bg-rose-50 text-rose-700'
+  if (status === 'processing') return 'bg-amber-50 text-amber-700'
   return 'bg-slate-100 text-slate-700'
 }
+
+const summary = computed(() => ({
+  total: docs.value.length,
+  ready: docs.value.filter((d) => d.status === 'ready').length,
+  processing: docs.value.filter((d) => d.status === 'processing').length
+}))
 
 onMounted(async () => {
   await fetchDocs()
@@ -54,52 +60,46 @@ onMounted(async () => {
 </script>
 
 <template>
-  <section class="space-y-6">
-    <div class="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-      <h2 class="mb-4 text-lg font-semibold text-slate-900">Upload documents</h2>
+  <section class="space-y-5">
+    <div class="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+      <h2 class="text-lg font-semibold text-slate-900">Add to your library</h2>
+      <p class="mt-1 text-sm text-slate-500">Drop images, videos, or PDFs. Indexing runs in background.</p>
 
-      <div class="grid gap-3 sm:grid-cols-[1fr_auto]">
+      <div class="mt-4 grid gap-3 sm:grid-cols-[1fr_auto]">
         <input
-          class="block w-full cursor-pointer rounded-lg border border-slate-300 bg-slate-50 text-sm text-slate-900 file:mr-4 file:rounded-md file:border-0 file:bg-brand-600 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-white hover:file:bg-brand-700"
+          class="block w-full cursor-pointer rounded-xl border border-dashed border-slate-300 bg-slate-50 px-3 py-2 text-sm text-slate-700 file:mr-3 file:rounded-full file:border-0 file:bg-brand-600 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-white"
           type="file"
           @change="e => file = e.target.files[0]"
         />
         <button
-          class="rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-60"
+          class="rounded-full bg-brand-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-60"
           :disabled="!file || isUploading"
           @click="handleUpload"
         >
-          {{ isUploading ? 'Uploading...' : 'Upload & index' }}
+          {{ isUploading ? 'Uploading...' : 'Upload' }}
         </button>
       </div>
 
-      <p v-if="error" class="mt-3 text-sm text-red-600">{{ error }}</p>
+      <p v-if="error" class="mt-3 text-sm text-rose-600">{{ error }}</p>
+
+      <div class="mt-4 flex flex-wrap gap-2 text-xs">
+        <span class="rounded-full bg-slate-100 px-3 py-1 text-slate-600">{{ summary.total }} total</span>
+        <span class="rounded-full bg-emerald-50 px-3 py-1 text-emerald-700">{{ summary.ready }} ready</span>
+        <span class="rounded-full bg-amber-50 px-3 py-1 text-amber-700">{{ summary.processing }} processing</span>
+      </div>
     </div>
 
-    <div class="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-      <h3 class="mb-4 text-lg font-semibold text-slate-900">Documents</h3>
-      <div class="overflow-x-auto">
-        <table class="w-full text-left text-sm text-slate-600">
-          <thead class="bg-slate-50 text-xs uppercase text-slate-700">
-            <tr>
-              <th class="px-4 py-3">Name</th>
-              <th class="px-4 py-3">Type</th>
-              <th class="px-4 py-3">Status</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="doc in docs" :key="doc.id" class="border-b border-slate-100 bg-white">
-              <td class="px-4 py-3">{{ doc.name }}</td>
-              <td class="px-4 py-3 capitalize">{{ doc.doc_type }}</td>
-              <td class="px-4 py-3">
-                <span class="rounded-full px-2.5 py-1 text-xs font-medium" :class="badgeClass(doc.status)">
-                  {{ doc.status }}
-                </span>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
+    <div class="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+      <h3 class="mb-3 text-base font-semibold text-slate-900">Recent uploads</h3>
+      <ul class="space-y-2">
+        <li v-for="doc in docs" :key="doc.id" class="flex items-center justify-between rounded-xl bg-slate-50 px-3 py-2">
+          <div class="min-w-0">
+            <p class="truncate text-sm font-medium text-slate-800">{{ doc.name }}</p>
+            <p class="text-xs capitalize text-slate-500">{{ doc.doc_type }}</p>
+          </div>
+          <span class="rounded-full px-2.5 py-1 text-xs font-medium" :class="statusClass(doc.status)">{{ doc.status }}</span>
+        </li>
+      </ul>
     </div>
   </section>
 </template>
