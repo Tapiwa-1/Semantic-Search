@@ -4,6 +4,8 @@ import App from './App.vue'
 import UploadPage from './pages/UploadPage.vue'
 import SearchPage from './pages/SearchPage.vue'
 import DetailPage from './pages/DetailPage.vue'
+import './style.css'
+import 'flowbite'
 
 const router = createRouter({
   history: createWebHistory(),

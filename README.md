@@ -1,6 +1,6 @@
 # Semantic Multimedia Document Vault
 
-MVP implementation using **Flask + Celery + Redis + ChromaDB** for backend indexing/search and **Vue 3 + Vite** for frontend.
+MVP implementation using **Flask + Celery + Redis + ChromaDB** for backend indexing/search and **Vue 3 + Vite + Tailwind CSS + Flowbite** for frontend.
 
 ## Features
 - Upload image / PDF / video files.
@@ -10,7 +10,7 @@ MVP implementation using **Flask + Celery + Redis + ChromaDB** for backend index
   - Video: poster frame + sampled frame embeddings
 - Semantic search endpoint with optional type filter.
 - File and preview serving endpoints.
-- Vue UI:
+- Vue UI (Tailwind + Flowbite styling):
   - Upload & document statuses
   - Search results with previews and chunk references
   - Detail page for media viewing
