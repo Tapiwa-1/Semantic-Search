@@ -6,11 +6,30 @@ import { useRoute, useRouter } from 'vue-router'
 const route = useRoute()
 const router = useRouter()
 const doc = ref(null)
+const faceName = ref('')
+const savingFaceName = ref(false)
 
 onMounted(async () => {
   const { data } = await axios.get('/api/documents')
   doc.value = data.find((d) => String(d.id) === route.params.id)
+  faceName.value = doc.value?.face_name || ''
 })
+
+const saveFaceName = async () => {
+  if (!doc.value || !faceName.value.trim()) return
+  savingFaceName.value = true
+  try {
+    await axios.put(`/api/documents/${doc.value.id}/face-name`, { face_name: faceName.value.trim() })
+    doc.value.face_name = faceName.value.trim()
+  } finally {
+    savingFaceName.value = false
+  }
+}
+
+const openSimilarFaces = () => {
+  if (!doc.value) return
+  router.push({ path: '/search', query: { similarTo: String(doc.value.id) } })
+}
 
 const deleteDoc = async () => {
   if (!doc.value) return
@@ -33,6 +52,23 @@ const deleteDoc = async () => {
         Type: <span class="capitalize">{{ doc.doc_type }}</span>
       </p>
       <p class="text-sm text-slate-500">Status: {{ doc.status }}</p>
+
+      <div v-if="doc.doc_type === 'image' || doc.doc_type === 'video'" class="space-y-2 rounded-2xl border border-slate-200 p-3">
+        <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Face tag</p>
+        <div class="flex items-center gap-2">
+          <input
+            v-model="faceName"
+            class="w-full rounded-full border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-900"
+            placeholder="e.g. Alice"
+          />
+          <button class="rounded-full bg-brand-600 px-3 py-2 text-xs font-semibold text-white" :disabled="!faceName || savingFaceName" @click="saveFaceName">
+            Save
+          </button>
+        </div>
+        <button class="rounded-full border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-700" @click="openSimilarFaces">
+          Find similar faces
+        </button>
+      </div>
 
       <a
         :href="`/files/${doc.id}`"

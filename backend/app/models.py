@@ -41,6 +41,7 @@ class Chunk(db.Model):
     chunk_type: Mapped[str] = mapped_column(Enum(*CHUNK_TYPES, name="chunk_type"), nullable=False)
     ref: Mapped[str | None] = mapped_column(nullable=True)
     text_content: Mapped[str | None] = mapped_column(nullable=True)
+    face_name: Mapped[str | None] = mapped_column(nullable=True)
     vector_id: Mapped[str | None] = mapped_column(nullable=True)
 
     document: Mapped[Document] = relationship(back_populates="chunks")

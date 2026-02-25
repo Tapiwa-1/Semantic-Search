@@ -8,7 +8,9 @@ MVP implementation using **Flask + SQLAlchemy + ChromaDB** for backend indexing/
   - Image: thumbnail + CLIP embedding
   - PDF: first page preview + page text extraction + embeddings
   - Video: poster frame + sampled frame embeddings
-- Semantic search endpoint with optional type filter.
+- Semantic search endpoint with optional type filter and face-name matching.
+- Similar-face search endpoint for image/video assets based on visual embeddings.
+- Face-tagging endpoint to name people for easier searching.
 - File and preview serving endpoints.
 - Delete endpoint that removes uploaded files, previews, frame artifacts, DB rows, and vector entries.
 - Vue UI (Tailwind + Flowbite styling, Google Photos-inspired):
@@ -44,5 +46,7 @@ Frontend dev server runs on `http://localhost:5173` and proxies `/api` + `/files
 - `GET /api/documents`
 - `DELETE /api/documents/<document_id>`
 - `GET /api/search?q=<text>&type=<optional>&limit=20`
+- `GET /api/search/similar-faces?document_id=<id>&limit=12`
+- `PUT /api/documents/<document_id>/face-name` with JSON body `{ "face_name": "Alice" }`
 - `GET /files/<document_id>`
 - `GET /files/<document_id>/preview`

@@ -21,6 +21,11 @@ class VectorStore:
             kwargs["where"] = where
         return self.collection.query(**kwargs)
 
+    def get_vectors(self, vector_ids: list[str]) -> dict:
+        if not vector_ids:
+            return {"ids": [], "embeddings": []}
+        return self.collection.get(ids=vector_ids, include=["embeddings", "metadatas"])
+
     def delete_ids(self, vector_ids: list[str]) -> None:
         if vector_ids:
             self.collection.delete(ids=vector_ids)

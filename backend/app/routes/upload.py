@@ -92,6 +92,7 @@ def list_documents():
                 "doc_type": d.doc_type,
                 "status": d.status,
                 "created_at": d.created_at.isoformat(),
+                "face_name": next((c.face_name for c in d.chunks if c.face_name), None),
             }
             for d in docs
         ]
@@ -125,3 +126,28 @@ def delete_document(document_id: int):
     db.session.commit()
 
     return jsonify({"status": "deleted", "document_id": document_id})
+
+
+@upload_bp.put("/documents/<int:document_id>/face-name")
+def tag_face_name(document_id: int):
+    doc = Document.query.get(document_id)
+    if not doc:
+        return jsonify({"error": "document not found"}), 404
+
+    payload = request.get_json(silent=True) or {}
+    face_name = (payload.get("face_name") or "").strip()
+    if not face_name:
+        return jsonify({"error": "face_name is required"}), 400
+
+    face_chunks = Chunk.query.filter(
+        Chunk.document_id == document_id,
+        Chunk.chunk_type.in_(["image", "video_frame"]),
+    ).all()
+    if not face_chunks:
+        return jsonify({"error": "no face-detectable chunks found for this document"}), 400
+
+    for chunk in face_chunks:
+        chunk.face_name = face_name
+
+    db.session.commit()
+    return jsonify({"status": "updated", "document_id": document_id, "face_name": face_name, "updated_chunks": len(face_chunks)})

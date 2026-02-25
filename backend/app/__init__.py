@@ -4,6 +4,7 @@ import os
 from pathlib import Path
 
 from flask import Flask
+from sqlalchemy import text
 from flask_cors import CORS
 
 from .models import db
@@ -36,5 +37,15 @@ def create_app() -> Flask:
 
     with app.app_context():
         db.create_all()
+        _ensure_face_name_column()
 
     return app
+
+
+def _ensure_face_name_column() -> None:
+    inspector = db.inspect(db.engine)
+    columns = {column["name"] for column in inspector.get_columns("chunks")}
+    if "face_name" in columns:
+        return
+    db.session.execute(text("ALTER TABLE chunks ADD COLUMN face_name VARCHAR"))
+    db.session.commit()
