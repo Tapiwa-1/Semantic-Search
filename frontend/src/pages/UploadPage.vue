@@ -6,12 +6,16 @@ const files = ref([])
 const fileInput = ref(null)
 const docs = ref([])
 const jobs = ref({})
+const selectedPhotoIds = ref([])
 const isUploading = ref(false)
+const isDeletingSelected = ref(false)
 const error = ref('')
 
 const fetchDocs = async () => {
   const { data } = await axios.get('/api/documents')
   docs.value = data
+  const validPhotoIds = new Set(data.filter((d) => d.doc_type === 'image').map((d) => d.id))
+  selectedPhotoIds.value = selectedPhotoIds.value.filter((id) => validPhotoIds.has(id))
 }
 
 const handleUpload = async () => {
@@ -44,7 +48,41 @@ const handleUpload = async () => {
 
 const deleteDoc = async (id) => {
   await axios.delete(`/api/documents/${id}`)
+  selectedPhotoIds.value = selectedPhotoIds.value.filter((selectedId) => selectedId !== id)
   await fetchDocs()
+}
+
+const deleteSelectedPhotos = async () => {
+  if (!selectedPhotoIds.value.length) return
+  isDeletingSelected.value = true
+  error.value = ''
+  try {
+    for (const id of selectedPhotoIds.value) {
+      await axios.delete(`/api/documents/${id}`)
+    }
+    selectedPhotoIds.value = []
+    await fetchDocs()
+  } catch (e) {
+    error.value = e?.response?.data?.error || 'Failed to delete selected photos'
+  } finally {
+    isDeletingSelected.value = false
+  }
+}
+
+const togglePhotoSelection = (id) => {
+  if (selectedPhotoIds.value.includes(id)) {
+    selectedPhotoIds.value = selectedPhotoIds.value.filter((selectedId) => selectedId !== id)
+    return
+  }
+  selectedPhotoIds.value = [...selectedPhotoIds.value, id]
+}
+
+const toggleSelectAllPhotos = () => {
+  if (allPhotosSelected.value) {
+    selectedPhotoIds.value = []
+    return
+  }
+  selectedPhotoIds.value = photoDocs.value.map((d) => d.id)
 }
 
 const poll = async () => {
@@ -68,6 +106,9 @@ const summary = computed(() => ({
   ready: docs.value.filter((d) => d.status === 'ready').length,
   processing: docs.value.filter((d) => d.status === 'processing').length
 }))
+
+const photoDocs = computed(() => docs.value.filter((d) => d.doc_type === 'image'))
+const allPhotosSelected = computed(() => photoDocs.value.length > 0 && selectedPhotoIds.value.length === photoDocs.value.length)
 
 const selectionLabel = computed(() => {
   if (!files.value.length) return 'No files selected'
@@ -117,12 +158,39 @@ onMounted(async () => {
     </div>
 
     <div class="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
-      <h3 class="mb-3 text-base font-semibold text-slate-900">Recent uploads</h3>
+      <div class="mb-3 flex flex-wrap items-center justify-between gap-2">
+        <h3 class="text-base font-semibold text-slate-900">Recent uploads</h3>
+        <div class="flex items-center gap-2" v-if="photoDocs.length">
+          <button
+            class="rounded-full border border-slate-200 px-3 py-1 text-xs font-medium text-slate-700 hover:bg-slate-50"
+            @click="toggleSelectAllPhotos"
+          >
+            {{ allPhotosSelected ? 'Unselect all photos' : 'Select all photos' }}
+          </button>
+          <button
+            class="rounded-full bg-rose-50 px-3 py-1 text-xs font-medium text-rose-700 hover:bg-rose-100 disabled:opacity-50"
+            :disabled="!selectedPhotoIds.length || isDeletingSelected"
+            @click="deleteSelectedPhotos"
+          >
+            {{ isDeletingSelected ? 'Deleting...' : `Delete selected (${selectedPhotoIds.length})` }}
+          </button>
+        </div>
+      </div>
+
       <ul class="space-y-2">
         <li v-for="doc in docs" :key="doc.id" class="flex items-center justify-between gap-2 rounded-xl bg-slate-50 px-3 py-2">
-          <div class="min-w-0">
-            <p class="truncate text-sm font-medium text-slate-800">{{ doc.name }}</p>
-            <p class="text-xs capitalize text-slate-500">{{ doc.doc_type }}</p>
+          <div class="flex min-w-0 items-center gap-2">
+            <input
+              v-if="doc.doc_type === 'image'"
+              :checked="selectedPhotoIds.includes(doc.id)"
+              type="checkbox"
+              class="h-4 w-4 rounded border-slate-300 text-brand-600 focus:ring-brand-500"
+              @change="togglePhotoSelection(doc.id)"
+            />
+            <div class="min-w-0">
+              <p class="truncate text-sm font-medium text-slate-800">{{ doc.name }}</p>
+              <p class="text-xs capitalize text-slate-500">{{ doc.doc_type }}</p>
+            </div>
           </div>
           <div class="flex items-center gap-2">
             <span class="rounded-full px-2.5 py-1 text-xs font-medium" :class="statusClass(doc.status)">{{ doc.status }}</span>
