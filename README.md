@@ -3,7 +3,7 @@
 MVP implementation using **Flask + SQLAlchemy + ChromaDB** for backend indexing/search and **Vue 3 + Vite + Tailwind CSS + Flowbite** for frontend.
 
 ## Features
-- Upload image / PDF / video files.
+- Upload image / PDF / video files (single or multiple in one request).
 - Async indexing pipeline (in-process background workers, no Redis required):
   - Image: thumbnail + CLIP embedding
   - PDF: first page preview + page text extraction + embeddings
@@ -41,7 +41,7 @@ npm run dev
 Frontend dev server runs on `http://localhost:5173` and proxies `/api` + `/files` to Flask.
 
 ## API
-- `POST /api/upload` (multipart `file`)
+- `POST /api/upload` (multipart `file`, supports one or many files)
 - `GET /api/jobs/<job_id>`
 - `GET /api/documents`
 - `DELETE /api/documents/<document_id>`

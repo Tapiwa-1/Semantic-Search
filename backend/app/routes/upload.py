@@ -28,49 +28,61 @@ def _doc_type_from_mime(mime: str, filename: str) -> str:
 
 @upload_bp.post("/upload")
 def upload_file():
-    if "file" not in request.files:
+    files = request.files.getlist("file")
+    if not files:
         return jsonify({"error": "No file provided"}), 400
 
-    file = request.files["file"]
-    if not file.filename:
+    valid_files = [file for file in files if file and file.filename]
+    if not valid_files:
         return jsonify({"error": "No filename"}), 400
 
-    mime = file.mimetype or mimetypes.guess_type(file.filename)[0] or "application/octet-stream"
-    try:
-        doc_type = _doc_type_from_mime(mime, file.filename)
-    except ValueError as exc:
-        return jsonify({"error": str(exc)}), 400
+    uploads: list[dict] = []
+    app = current_app._get_current_object()
 
-    filename = secure_filename(file.filename)
-    suffix = Path(filename).suffix
-    stored_name = f"{uuid.uuid4()}{suffix}"
-    file_path = str(Path(current_app.config["UPLOAD_FOLDER"]) / stored_name)
-    file.save(file_path)
+    for file in valid_files:
+        mime = file.mimetype or mimetypes.guess_type(file.filename)[0] or "application/octet-stream"
+        try:
+            doc_type = _doc_type_from_mime(mime, file.filename)
+        except ValueError as exc:
+            return jsonify({"error": f"{file.filename}: {exc}"}), 400
 
-    size_bytes = Path(file_path).stat().st_size
-    sha256_hash = hashlib.sha256(Path(file_path).read_bytes()).hexdigest()
+        filename = secure_filename(file.filename)
+        suffix = Path(filename).suffix
+        stored_name = f"{uuid.uuid4()}{suffix}"
+        file_path = str(Path(current_app.config["UPLOAD_FOLDER"]) / stored_name)
+        file.save(file_path)
 
-    doc = Document(
-        original_name=filename,
-        stored_name=stored_name,
-        mime_type=mime,
-        doc_type=doc_type,
-        file_path=file_path,
-        size_bytes=size_bytes,
-        status="uploaded",
-        sha256_hash=sha256_hash,
-    )
-    db.session.add(doc)
-    db.session.flush()
+        size_bytes = Path(file_path).stat().st_size
+        sha256_hash = hashlib.sha256(Path(file_path).read_bytes()).hexdigest()
 
-    job_id = str(uuid.uuid4())
-    job = JobStatus(id=job_id, document_id=doc.id, status="queued", progress=0)
-    db.session.add(job)
-    db.session.commit()
+        doc = Document(
+            original_name=filename,
+            stored_name=stored_name,
+            mime_type=mime,
+            doc_type=doc_type,
+            file_path=file_path,
+            size_bytes=size_bytes,
+            status="uploaded",
+            sha256_hash=sha256_hash,
+        )
+        db.session.add(doc)
+        db.session.flush()
 
-    enqueue_document_processing(current_app._get_current_object(), doc.id, job_id)
+        job_id = str(uuid.uuid4())
+        job = JobStatus(id=job_id, document_id=doc.id, status="queued", progress=0)
+        db.session.add(job)
+        db.session.commit()
 
-    return jsonify({"document_id": doc.id, "job_id": job_id, "status": "queued"}), 202
+        enqueue_document_processing(app, doc.id, job_id)
+        uploads.append({"document_id": doc.id, "job_id": job_id, "status": "queued", "name": filename})
+
+    if len(uploads) == 1:
+        payload = uploads[0].copy()
+        payload["uploads"] = uploads
+        payload["count"] = 1
+        return jsonify(payload), 202
+
+    return jsonify({"uploads": uploads, "count": len(uploads), "status": "queued"}), 202
 
 
 @upload_bp.get("/jobs/<job_id>")

@@ -2,7 +2,8 @@
 import axios from 'axios'
 import { computed, onMounted, ref } from 'vue'
 
-const file = ref(null)
+const files = ref([])
+const fileInput = ref(null)
 const docs = ref([])
 const jobs = ref({})
 const isUploading = ref(false)
@@ -14,16 +15,26 @@ const fetchDocs = async () => {
 }
 
 const handleUpload = async () => {
-  if (!file.value) return
+  if (!files.value.length) return
   isUploading.value = true
   error.value = ''
   try {
     const form = new FormData()
-    form.append('file', file.value)
+    for (const selectedFile of files.value) {
+      form.append('file', selectedFile)
+    }
+
     const { data } = await axios.post('/api/upload', form)
-    jobs.value[data.document_id] = data.job_id
+    const uploads = data.uploads || (data.document_id ? [{ document_id: data.document_id, job_id: data.job_id }] : [])
+    for (const item of uploads) {
+      jobs.value[item.document_id] = item.job_id
+    }
+
     await fetchDocs()
-    file.value = null
+    files.value = []
+    if (fileInput.value) {
+      fileInput.value.value = ''
+    }
   } catch (e) {
     error.value = e?.response?.data?.error || 'Upload failed'
   } finally {
@@ -58,6 +69,12 @@ const summary = computed(() => ({
   processing: docs.value.filter((d) => d.status === 'processing').length
 }))
 
+const selectionLabel = computed(() => {
+  if (!files.value.length) return 'No files selected'
+  if (files.value.length === 1) return files.value[0].name
+  return `${files.value.length} files selected`
+})
+
 onMounted(async () => {
   await fetchDocs()
   setInterval(poll, 2000)
@@ -68,20 +85,25 @@ onMounted(async () => {
   <section class="space-y-5">
     <div class="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
       <h2 class="text-lg font-semibold text-slate-900">Add to your library</h2>
-      <p class="mt-1 text-sm text-slate-500">Drop images, videos, or PDFs. Indexing runs in background.</p>
+      <p class="mt-1 text-sm text-slate-500">Drop images, videos, or PDFs. You can select and upload multiple files at once.</p>
 
       <div class="mt-4 grid gap-3 sm:grid-cols-[1fr_auto]">
-        <input
-          class="block w-full cursor-pointer rounded-xl border border-dashed border-slate-300 bg-slate-50 px-3 py-2 text-sm text-slate-700 file:mr-3 file:rounded-full file:border-0 file:bg-brand-600 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-white"
-          type="file"
-          @change="e => file = e.target.files[0]"
-        />
+        <div>
+          <input
+            ref="fileInput"
+            class="block w-full cursor-pointer rounded-xl border border-dashed border-slate-300 bg-slate-50 px-3 py-2 text-sm text-slate-700 file:mr-3 file:rounded-full file:border-0 file:bg-brand-600 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-white"
+            type="file"
+            multiple
+            @change="e => files = Array.from(e.target.files || [])"
+          />
+          <p class="mt-2 text-xs text-slate-500">{{ selectionLabel }}</p>
+        </div>
         <button
           class="rounded-full bg-brand-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-60"
-          :disabled="!file || isUploading"
+          :disabled="!files.length || isUploading"
           @click="handleUpload"
         >
-          {{ isUploading ? 'Uploading...' : 'Upload' }}
+          {{ isUploading ? 'Uploading...' : `Upload${files.length > 1 ? ` (${files.length})` : ''}` }}
         </button>
       </div>
 
