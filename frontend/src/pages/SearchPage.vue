@@ -1,13 +1,15 @@
 <script setup>
 import axios from 'axios'
-import { computed, ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { computed, onMounted, ref } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 
 const q = ref('')
 const type = ref('')
 const results = ref([])
 const loading = ref(false)
+const similarTo = ref('')
 const router = useRouter()
+const route = useRoute()
 
 const typeOptions = [
   { label: 'All', value: '' },
@@ -17,6 +19,7 @@ const typeOptions = [
 ]
 
 const runSearch = async () => {
+  similarTo.value = ''
   loading.value = true
   try {
     const { data } = await axios.get('/api/search', { params: { q: q.value, type: type.value || undefined } })
@@ -26,8 +29,34 @@ const runSearch = async () => {
   }
 }
 
+const findSimilarFaces = async (documentId) => {
+  loading.value = true
+  try {
+    const { data } = await axios.get('/api/search/similar-faces', { params: { document_id: documentId, limit: 20 } })
+    similarTo.value = documentId
+    q.value = ''
+    results.value = data.results
+  } finally {
+    loading.value = false
+  }
+}
+
+onMounted(() => {
+  const seededQuery = route.query.q ? String(route.query.q) : ''
+  const seedSimilarTo = route.query.similarTo ? Number(route.query.similarTo) : 0
+  if (seededQuery) {
+    q.value = seededQuery
+    runSearch()
+    return
+  }
+  if (seedSimilarTo) {
+    findSimilarFaces(seedSimilarTo)
+  }
+})
+
 const groupedHint = computed(() => {
-  if (!q.value) return 'Search your library by concept, object, text, or moment.'
+  if (similarTo.value) return `Showing ${results.value.length} face-similar result${results.value.length === 1 ? '' : 's'}`
+  if (!q.value) return 'Search your library by concept, object, text, face name, or moment.'
   return `Showing ${results.value.length} result${results.value.length === 1 ? '' : 's'} for "${q.value}"`
 })
 </script>
@@ -39,7 +68,7 @@ const groupedHint = computed(() => {
         <input
           v-model="q"
           class="w-full rounded-full border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 placeholder:text-slate-400 focus:border-brand-400 focus:bg-white focus:ring-brand-400"
-          placeholder="Search photos, PDFs, videos... (e.g. red car, invoice number 234)"
+          placeholder="Search photos, PDFs, videos, or face names (e.g. Alice)"
           @keyup.enter="runSearch"
         />
         <button
@@ -76,6 +105,7 @@ const groupedHint = computed(() => {
         <div class="space-y-1 p-3">
           <h3 class="line-clamp-1 text-sm font-semibold text-slate-900">{{ item.name }}</h3>
           <p class="text-xs text-slate-500 capitalize">{{ item.doc_type }} · score {{ item.score }}</p>
+          <p v-if="item.face_names?.length" class="line-clamp-1 text-xs text-brand-700">Face tags: {{ item.face_names.join(', ') }}</p>
           <p class="line-clamp-2 text-xs text-slate-500" v-if="item.matches?.[0]">
             Match: {{ item.matches[0].chunk_type }}{{ item.matches[0].ref ? ` @ ${item.matches[0].ref}` : '' }}
           </p>
@@ -84,7 +114,7 @@ const groupedHint = computed(() => {
     </div>
 
     <div v-else-if="!loading" class="rounded-2xl border border-dashed border-slate-300 bg-white p-10 text-center">
-      <p class="text-sm text-slate-500">No results yet. Try searching a concept like “wedding decor” or “terms and conditions”.</p>
+      <p class="text-sm text-slate-500">No results yet. Try semantic search, a face name tag, or "Find similar faces" from detail view.</p>
     </div>
   </section>
 </template>
